@@ -35,6 +35,45 @@ jobs:
         id: git_setup
         uses: Homebrew/actions/git-user-config@fd832223f9f99ebf0244dd20658680e5d4aca049 # 2026.08.03.2
 
+      - name: Verify required bottle checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: |
+          if [[ -z "$HEAD_SHA" ]]
+          then
+            echo "head_sha is required to verify bottle coverage"
+            exit 1
+          fi
+
+          checks="$(gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
+            -f per_page=100)"
+          required=(
+            "test-bot (arm64_sonoma)"
+            "test-bot (arm64_sequoia)"
+            "test-bot (arm64_tahoe)"
+            "test-bot (sequoia)"
+            "test-bot (tahoe)"
+            "test-bot (x86_64_linux)"
+          )
+
+          for name in "${required[@]}"
+          do
+            conclusion="$(jq -r --arg name "$name" '
+              [.check_runs[] | select(.name == $name) | .conclusion]
+              | if index("success") then "success"
+                elif length == 0 then "missing"
+                else join(",")
+                end
+              ' <<<"$checks")"
+            if [[ "$conclusion" != "success" ]]
+            then
+              echo "$name is $conclusion; refusing to publish incomplete bottle coverage"
+              exit 1
+            fi
+          done
+
       - name: Pull bottles
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}

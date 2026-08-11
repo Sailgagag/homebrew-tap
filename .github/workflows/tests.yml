@@ -15,11 +15,23 @@ defaults:
 
 jobs:
   test-bot:
+    name: test-bot (${{ matrix.bottle_tag }})
     strategy:
+      fail-fast: false
       matrix:
-        os: [ macos-26 ]
         include:
+          - os: macos-14
+            bottle_tag: arm64_sonoma
+          - os: macos-15
+            bottle_tag: arm64_sequoia
+          - os: macos-26
+            bottle_tag: arm64_tahoe
+          - os: macos-15-intel
+            bottle_tag: sequoia
+          - os: macos-26-intel
+            bottle_tag: tahoe
           - os: ubuntu-latest
+            bottle_tag: x86_64_linux
             container:
               image: ghcr.io/homebrew/brew:main
               options: --privileged
@@ -56,5 +68,5 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: bottles_${{ matrix.os }}
+          name: bottles_${{ matrix.bottle_tag }}
           path: '*.bottle.*'

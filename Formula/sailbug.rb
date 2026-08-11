@@ -6,6 +6,7 @@ class Sailbug < Formula
   url "https://github.com/Sailgagag/sailbug/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "c8833d3b22743fc9f68edbe5d184c3e3c993be02b11fad538692ff6f503e1bad"
   license "MIT"
+  revision 1
 
   bottle do
     root_url "https://github.com/Sailgagag/homebrew-tap/releases/download/sailbug-0.1.0"
