@@ -7,6 +7,12 @@ class Sailbug < Formula
   sha256 "c8833d3b22743fc9f68edbe5d184c3e3c993be02b11fad538692ff6f503e1bad"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/Sailgagag/homebrew-tap/releases/download/sailbug-0.1.0"
+    sha256 cellar: :any, arm64_tahoe:  "db49b60b771982b8aadc6b879eaa699d11c0fdae87e2d67b0c10e9ab2a3918ee"
+    sha256 cellar: :any, x86_64_linux: "d14260da7a2849f3ce26ed2215a01af5464554e0ef1c863025d9ae2bd94e90c0"
+  end
+
   depends_on "rust" => :build
   depends_on "python@3.12"
   depends_on "ripgrep"
