@@ -9,9 +9,11 @@ class Sailbug < Formula
   revision 1
 
   bottle do
-    root_url "https://github.com/Sailgagag/homebrew-tap/releases/download/sailbug-0.1.0"
-    sha256 cellar: :any, arm64_tahoe:  "db49b60b771982b8aadc6b879eaa699d11c0fdae87e2d67b0c10e9ab2a3918ee"
-    sha256 cellar: :any, x86_64_linux: "d14260da7a2849f3ce26ed2215a01af5464554e0ef1c863025d9ae2bd94e90c0"
+    root_url "https://github.com/Sailgagag/homebrew-tap/releases/download/sailbug-0.1.0_1"
+    sha256 cellar: :any, arm64_tahoe:   "6554b65b2053f6b7b49ab8b701f5bc65051185c1427ac8d40405fb6035308b2b"
+    sha256 cellar: :any, arm64_sequoia: "85843bfe778cc95c5f9fb6a01075bf77ebf088718a3b4e2280c349a720b78fbd"
+    sha256 cellar: :any, arm64_sonoma:  "6de712f9f526895c21439330564cfdaacbf0e7a913bf5c3b115119aed5cf9d16"
+    sha256 cellar: :any, x86_64_linux:  "6206a53ed40cacca62ef5b45384ab340bd00d2178e733f3da28caa92ec2588a7"
   end
 
   depends_on "rust" => :build
