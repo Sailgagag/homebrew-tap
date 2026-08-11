@@ -2,6 +2,11 @@
 name: brew pr-pull
 
 on:
+  workflow_run:
+    workflows:
+      - brew test-bot
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       pull_request:
@@ -18,6 +23,10 @@ defaults:
 
 jobs:
   pr-pull:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -26,6 +35,60 @@ jobs:
       issues: read
       pull-requests: write
     steps:
+      - name: Resolve and authorize release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH_HEAD_SHA: ${{ inputs.head_sha }}
+          DISPATCH_PULL_REQUEST: ${{ inputs.pull_request }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_PULL_REQUEST: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_run" ]]
+          then
+            pull_request="$RUN_PULL_REQUEST"
+            head_sha="$RUN_HEAD_SHA"
+          else
+            pull_request="$DISPATCH_PULL_REQUEST"
+            head_sha="$DISPATCH_HEAD_SHA"
+          fi
+
+          if [[ -z "$pull_request" ]]
+          then
+            echo "A pull request number is required"
+            exit 1
+          fi
+
+          pull="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pull_request")"
+          actual_head_sha="$(jq -r '.head.sha' <<<"$pull")"
+          head_repo="$(jq -r '.head.repo.full_name' <<<"$pull")"
+          state="$(jq -r '.state' <<<"$pull")"
+          draft="$(jq -r '.draft' <<<"$pull")"
+
+          if [[ -z "$head_sha" ]]
+          then
+            head_sha="$actual_head_sha"
+          fi
+          if [[ "$head_repo" != "$GITHUB_REPOSITORY" ]]
+          then
+            echo "Refusing to publish bottles from fork $head_repo"
+            exit 1
+          fi
+          if [[ "$state" != "open" || "$draft" != "false" ]]
+          then
+            echo "Pull request must be open and ready for review"
+            exit 1
+          fi
+          if [[ "$head_sha" != "$actual_head_sha" ]]
+          then
+            echo "Expected head $head_sha but pull request is at $actual_head_sha"
+            exit 1
+          fi
+
+          echo "head_sha=$head_sha" >>"$GITHUB_OUTPUT"
+          echo "pull_request=$pull_request" >>"$GITHUB_OUTPUT"
+
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@fd832223f9f99ebf0244dd20658680e5d4aca049 # 2026.08.03.2
         with:
@@ -38,14 +101,8 @@ jobs:
       - name: Verify required bottle checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ inputs.head_sha }}
+          HEAD_SHA: ${{ steps.release.outputs.head_sha }}
         run: |
-          if [[ -z "$HEAD_SHA" ]]
-          then
-            echo "head_sha is required to verify bottle coverage"
-            exit 1
-          fi
-
           checks="$(gh api --method GET \
             "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
             -f per_page=100)"
@@ -53,8 +110,6 @@ jobs:
             "test-bot (arm64_sonoma)"
             "test-bot (arm64_sequoia)"
             "test-bot (arm64_tahoe)"
-            "test-bot (sequoia)"
-            "test-bot (tahoe)"
             "test-bot (x86_64_linux)"
           )
 
@@ -79,8 +134,8 @@ jobs:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_GIT_COMMITTER_NAME: ${{ steps.git_setup.outputs.name }}
           HOMEBREW_GIT_COMMITTER_EMAIL: ${{ steps.git_setup.outputs.email }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-          PULL_REQUEST: ${{ inputs.pull_request }}
+          HEAD_SHA: ${{ steps.release.outputs.head_sha }}
+          PULL_REQUEST: ${{ steps.release.outputs.pull_request }}
         run: |
           if [[ -n "$HEAD_SHA" ]]
           then
